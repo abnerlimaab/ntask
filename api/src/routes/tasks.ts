@@ -1,13 +1,20 @@
-import { prisma } from "../prisma";
 import express from "express";
+import { prisma } from "../prisma";
+import { Passport } from "../auth";
+import { getUserId } from "../utils";
 
 export const tasksRouter = express.Router();
 
 tasksRouter
   .route("/tasks")
-  .get(async (_, res) => {
+  .all(Passport.authenticate())
+  .get(async (req, res) => {
     try {
-      const tasks = await prisma.task.findMany();
+      const tasks = await prisma.task.findMany({
+        where: {
+          userId: getUserId(req),
+        },
+      });
 
       res.json({
         tasks: tasks,
@@ -19,7 +26,10 @@ tasksRouter
   .post(async (req, res) => {
     try {
       const task = await prisma.task.create({
-        data: req.body,
+        data: {
+          ...req.body,
+          userId: getUserId(req),
+        },
       });
 
       res.json(task);
@@ -30,11 +40,13 @@ tasksRouter
 
 tasksRouter
   .route("/tasks/:id")
+  .all(Passport.authenticate())
   .get(async (req, res) => {
     try {
-      const task = await prisma.task.findUnique({
+      const task = await prisma.task.findFirst({
         where: {
           id: Number(req.params.id),
+          userId: getUserId(req),
         },
       });
 
@@ -52,9 +64,10 @@ tasksRouter
   })
   .put(async (req, res) => {
     try {
-      const task = await prisma.task.update({
+      const task = await prisma.task.updateMany({
         where: {
           id: Number(req.params.id),
+          userId: getUserId(req),
         },
         data: req.body,
       });
@@ -66,9 +79,10 @@ tasksRouter
   })
   .delete(async (req, res) => {
     try {
-      await prisma.task.delete({
+      await prisma.task.deleteMany({
         where: {
           id: Number(req.params.id),
+          userId: getUserId(req),
         },
       });
 
